@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
-  "errors"
-	"github.com/julienschmidt/httprouter"
 )
 
 func (app *application) readIDParam(r *http.Request) (int64, error) {
@@ -17,8 +17,10 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 	return id, nil
 }
 
-func (app *application) writejson(w http.ResponseWriter, status int, data any, headers http.Header) error {
-	js, err := json.Marshal(data)
+type envolpe map[string]any
+
+func (app *application) writejson(w http.ResponseWriter, status int, data envolpe, headers http.Header) error {
+	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
