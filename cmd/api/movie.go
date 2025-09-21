@@ -13,7 +13,7 @@ func (app *application) createmovie(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title   string   `json:"title"`
 		Year    int      `json:"year"`
-		Runtime int      `json:"runtime"`
+		Runtime data.Runtime      `json:"runtime"`
 		Genre   []string `json:"genre"`
 	}
 
