@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,7 +10,19 @@ import (
 )
 
 func (app *application) createmovie(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "creating a movie...")
+	var input struct {
+		Title   string   `json:"title"`
+		Year    int      `json:"year"`
+		Runtime int      `json:"runtime"`
+		Genre   []string `json:"genre"`
+	}
+
+	err := app.Readjson(w, r, &input)
+	if err != nil {
+		app.badRequestresponse(w,r,err)
+		return
+	}
+	fmt.Fprintf(w, "%+v\n", input)
 }
 
 func (app *application) viewmovie(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +45,7 @@ func (app *application) viewmovie(w http.ResponseWriter, r *http.Request) {
 	err = app.writejson(w, http.StatusOK, envolpe{"movie": movie}, nil)
 	if err != nil {
 		app.logger.Error(err.Error())
-		http.Error(w, "sorry", http.StatusInternalServerError)
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 

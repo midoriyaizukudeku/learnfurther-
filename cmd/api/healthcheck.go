@@ -18,8 +18,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 
 	err := app.writejson(w, 200, env, nil)
 	if err != nil {
-		http.Error(w, "imo no", http.StatusInternalServerError)
-		return
+		app.serverErrorResponse(w,r, err)
 	}
 
 	
