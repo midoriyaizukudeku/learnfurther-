@@ -1,54 +1,89 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log/slog"
-	"net/http"
-	"os"
-	"time"
+        "context"
+        "database/sql"
+        "flag"
+        "fmt"
+        "log/slog"
+        "net/http"
+        "os"
+        "time"
+        _ "github.com/lib/pq"
 )
 
 const version = "1.0.0"
 
 type config struct {
-	port int
-	env  string
+        port int
+        env  string
+        db struct{
+                dsn string
+        }
 }
 
 type application struct {
-	config config
-	logger *slog.Logger
+        config config
+        logger *slog.Logger
 }
 
 func main() {
 
-	var cfg config
+        var cfg config
 
-	flag.IntVar(&cfg.port, "port", 4040, "PORT NETWORM")
-	flag.StringVar(&cfg.env, "env", "development", "ENVIzroment(deve|staging|production)")
+        flag.IntVar(&cfg.port, "port", 4000, "PORT NETWORM")
+        flag.StringVar(&cfg.env, "env", "development", "ENVIzroment(deve|staging|production)")
+        flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_URL"), "POSTQRESl DSN")
+        
 
-	flag.Parse()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+        flag.Parse()
+        logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	app := &application{
-		config: cfg,
-		logger: logger,
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/healthcheck", app.healthcheckHandler)
+        db, err := OpenDb(cfg)
+        if err != nil{
+                logger.Error(err.Error())
+                os.Exit(1)
+        }
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.Routes(),
-		IdleTimeout:  1 * time.Minute,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-	}
+        defer db.Close()
 
-	logger.Info("starting server", "addr", srv.Addr, "env", cfg.env)
-	err := srv.ListenAndServe()
-	logger.Error(err.Error())
-	os.Exit(1)
+        logger.Info("database connection pool established")
+        
+
+        app := &application{
+                config: cfg,
+                logger: logger,
+        }
+        mux := http.NewServeMux()
+        mux.HandleFunc("/v1/healthcheck", app.healthcheckHandler)
+
+        srv := &http.Server{
+                Addr:         fmt.Sprintf(":%d", cfg.port),
+                Handler:      app.Routes(),
+                IdleTimeout:  1 * time.Minute,
+                ReadTimeout:  5 * time.Second,
+                WriteTimeout: 10 * time.Second,
+                ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
+        }
+
+        logger.Info("starting server", "addr", srv.Addr, "env", cfg.env)
+        err = srv.ListenAndServe()
+        logger.Error(err.Error())
+        os.Exit(1)
+}
+
+func OpenDb(cfg config) (*sql.DB, error){
+        db, err := sql.Open("postgres", cfg.db.dsn)
+        if err != nil {
+                return nil, err 
+        }
+        ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+        defer cancel()
+
+        err = db.PingContext(ctx)
+        if err != nil {
+                db.Close()
+                return nil, err
+        }
+        return db , nil
 }

@@ -7,21 +7,38 @@ import (
 	"time"
 
 	"main/internal/data"
+	"main/internal/validator"
 )
 
 func (app *application) createmovie(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title   string   `json:"title"`
-		Year    int      `json:"year"`
-		Runtime data.Runtime      `json:"runtime"`
-		Genre   []string `json:"genre"`
+		Title   string       `json:"title"`
+		Year    int          `json:"year"`
+		Runtime data.Runtime `json:"runtime"`
+		Genre   []string     `json:"genres"`
 	}
 
 	err := app.Readjson(w, r, &input)
 	if err != nil {
-		app.badRequestresponse(w,r,err)
+		app.badRequestresponse(w, r, err)
 		return
 	}
+
+	movie := &data.Movie{
+		Title: input.Title,
+		Year: int32(input.Year),
+		Runtime: input.Runtime,
+		Genre: input.Genre,
+	}
+	
+	v := validator.New()
+
+	
+	if data.ValidateMovie(v,*movie); !v.Valid(){
+		app.Failedvalidationerror(w,r, v.Errors)
+	  return
+	}
+
 	fmt.Fprintf(w, "%+v\n", input)
 }
 
