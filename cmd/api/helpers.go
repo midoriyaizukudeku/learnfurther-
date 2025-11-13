@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"main/internal/validator"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -98,3 +100,43 @@ func (app *application) Readjson(w http.ResponseWriter, r *http.Request, dst any
 	}
 	return nil
 }
+
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+	return s
+}
+
+func (app *application) csvReader(qs url.Values, key string, defaultValue []string) []string {
+	csv := qs.Get(key)
+	if csv == "" {
+		return defaultValue
+	}
+	return strings.Split(csv, ",")
+}
+
+func (app *application) readint(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
+
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be a valid value")
+		return defaultValue
+	}
+	return i
+
+}
+
+// Title
+// Genres
+// Page
+// string
+// []string
+// int
+// PageSize int
+// Sort string
